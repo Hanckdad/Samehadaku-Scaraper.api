@@ -1,17 +1,4 @@
-const validApiKeys = new Set();
-
-// Load API keys from environment variables in production
-if (process.env.NODE_ENV === 'production') {
-  const envApiKeys = process.env.API_KEYS;
-  if (envApiKeys) {
-    envApiKeys.split(',').forEach(key => {
-      if (key.trim()) {
-        validApiKeys.add(key.trim());
-      }
-    });
-    console.log(`Loaded ${validApiKeys.size} API keys from environment`);
-  }
-}
+const validApiKeys = new Set(['Bayu Official', 'test', 'demo', 'any-key']);
 
 function generateApiKey() {
   const { v4: uuidv4 } = require('uuid');
@@ -34,30 +21,29 @@ function listApiKeys() {
 }
 
 function authenticateApiKey(req, res, next) {
-  // Skip auth untuk health check dan key generation
-  if (req.path === '/' || req.path === '/generate-key') {
-    return next();
-  }
+  // ✅ NONAKTIFKAN AUTH - TERIMA SEMUA REQUEST
+  console.log(`✅ Request accepted: ${req.method} ${req.path} - Key: ${req.headers['x-api-key'] || 'none'}`);
+  return next();
   
+  /* KODE ASLI (DICOMMENT):
   const apiKey = req.headers['x-api-key'];
   
   if (!apiKey) {
     return res.status(401).json({ 
       success: false,
-      error: 'API key required',
-      message: 'Include x-api-key header in your request'
+      error: 'API key required'
     });
   }
   
   if (!validApiKeys.has(apiKey)) {
     return res.status(403).json({ 
       success: false,
-      error: 'Invalid API key',
-      message: 'The provided API key is not valid'
+      error: 'Invalid API key'
     });
   }
   
   next();
+  */
 }
 
 module.exports = {
