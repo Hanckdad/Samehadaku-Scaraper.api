@@ -1,9 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const scraper = require('../lib/scraper');
-const db = require('../lib/database');
+const scraper = require('./scraper');
+const db = require('./database');
 
-// Get anime schedule
 router.get('/', async (req, res) => {
   try {
     const cacheKey = 'schedule';
@@ -20,7 +19,7 @@ router.get('/', async (req, res) => {
       data: schedule
     };
 
-    db.set(cacheKey, response, 3600000); // Cache 1 hour
+    db.set(cacheKey, response, 3600000);
     
     res.json(response);
   } catch (error) {
