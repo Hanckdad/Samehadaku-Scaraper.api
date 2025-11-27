@@ -34,11 +34,12 @@ function listApiKeys() {
 }
 
 function authenticateApiKey(req, res, next) {
-  // Skip auth for health check and key generation
+  // Skip auth untuk health check dan key generation
   if (req.path === '/' || req.path === '/generate-key') {
     return next();
   }
   
+  // ✅ PERBAIKI: Untuk admin routes, kita tetap butuh auth
   const apiKey = req.headers['x-api-key'];
   
   if (!apiKey) {
