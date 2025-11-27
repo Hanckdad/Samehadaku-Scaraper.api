@@ -62,6 +62,7 @@ app.use((req, res, next) => {
   next();
 });
 
+// ==================== ROUTES REGISTRATION ====================
 // API Routes
 app.use('/api/anime', require('./anime/index'));
 app.use('/api/search', require('./anime/search'));
@@ -77,9 +78,13 @@ app.use('/api/recommendations', require('./recommendations'));
 app.use('/api/home', require('./home'));
 app.use('/api/stats', require('./stats'));
 
+// Admin routes untuk management API keys
+app.use('/api/admin', require('./admin'));
+
 // API Key middleware (applied to all API routes)
 const { authenticateApiKey } = require('./middleware/auth');
 app.use('/api', authenticateApiKey);
+// ==================== END ROUTES REGISTRATION ====================
 
 // Health check dengan info lengkap
 app.get('/', (req, res) => {
@@ -97,7 +102,8 @@ app.get('/', (req, res) => {
       'Movie Listings',
       'API Key Authentication',
       'Rate Limiting',
-      'Caching System'
+      'Caching System',
+      'Admin API Key Management'
     ],
     endpoints: {
       anime: '/api/anime/{slug}',
@@ -112,9 +118,19 @@ app.get('/', (req, res) => {
       movies: '/api/movies?page={page}',
       recommendations: '/api/recommendations',
       home: '/api/home',
-      stats: '/api/stats'
+      stats: '/api/stats',
+      admin: {
+        list_keys: '/api/admin/keys',
+        generate_key: 'POST /api/admin/keys/generate',
+        add_key: 'POST /api/admin/keys',
+        delete_key: 'DELETE /api/admin/keys/{key}'
+      }
     },
-    documentation: 'Add x-api-key header to all requests'
+    documentation: 'Add x-api-key header to all API requests',
+    rate_limits: {
+      global: '100 requests per minute',
+      search: '30 requests per minute'
+    }
   });
 });
 
@@ -133,7 +149,16 @@ app.get('/generate-key', (req, res) => {
   res.json({
     success: true,
     apiKey,
-    message: 'Save this API key for future requests. Use header: x-api-key'
+    message: 'Save this API key for future requests. Use header: x-api-key',
+    usage_example: {
+      curl: `curl -H "x-api-key: ${apiKey}" http://localhost:3000/api/ongoing`,
+      javascript: `
+fetch('http://localhost:3000/api/ongoing', {
+  headers: {
+    'x-api-key': '${apiKey}'
+  }
+})`
+    }
   });
 });
 
@@ -142,21 +167,35 @@ app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     error: 'Endpoint not found',
-    availableEndpoints: [
-      '/api/anime/{slug}',
-      '/api/search?q={query}',
-      '/api/ongoing',
-      '/api/completed',
-      '/api/popular',
-      '/api/schedule',
-      '/api/genres',
-      '/api/streaming',
-      '/api/recent',
-      '/api/movies',
-      '/api/recommendations',
-      '/api/home',
-      '/api/stats'
-    ]
+    availableEndpoints: {
+      public: [
+        'GET /',
+        'GET /generate-key (dev only)'
+      ],
+      api: [
+        'GET /api/anime/{slug}',
+        'GET /api/search?q={query}',
+        'GET /api/ongoing?page={page}',
+        'GET /api/completed?page={page}',
+        'GET /api/popular?page={page}',
+        'GET /api/schedule',
+        'GET /api/genres',
+        'GET /api/genres/{genre}?page={page}',
+        'GET /api/streaming?url={episode_url}',
+        'GET /api/recent?page={page}',
+        'GET /api/movies?page={page}',
+        'GET /api/recommendations',
+        'GET /api/home',
+        'GET /api/stats'
+      ],
+      admin: [
+        'GET /api/admin/keys',
+        'POST /api/admin/keys/generate',
+        'POST /api/admin/keys',
+        'DELETE /api/admin/keys/{key}'
+      ]
+    },
+    note: 'All API endpoints require x-api-key header'
   });
 });
 
@@ -164,13 +203,27 @@ app.use('*', (req, res) => {
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
   
-  res.status(500).json({
+  // Default error
+  const errorResponse = {
     success: false,
     error: process.env.NODE_ENV === 'production' 
       ? 'Internal server error' 
       : err.message,
-    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
-  });
+    timestamp: new Date().toISOString()
+  };
+  
+  // Add stack trace in development
+  if (process.env.NODE_ENV !== 'production') {
+    errorResponse.stack = err.stack;
+  }
+  
+  // Specific error for scraping issues
+  if (err.message.includes('Failed to fetch') || err.message.includes('scraping')) {
+    errorResponse.error = 'Failed to fetch data from source';
+    errorResponse.suggestion = 'Please try again later or check if the source is available';
+  }
+  
+  res.status(500).json(errorResponse);
 });
 
 // Graceful shutdown
@@ -184,6 +237,15 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`
@@ -192,6 +254,27 @@ app.listen(PORT, () => {
 📚 API Documentation: http://localhost:${PORT}
 🔑 Generate API Key: http://localhost:${PORT}/generate-key
 🌐 Environment: ${process.env.NODE_ENV || 'development'}
+💾 Memory: ${process.memoryUsage().heapUsed / 1024 / 1024} MB
+
+📋 Available Endpoints:
+   📖 GET  /                    - API Documentation
+   🔑 GET  /generate-key        - Generate API Key (Dev only)
+   🔍 GET  /api/search?q={query}- Search Anime
+   📺 GET  /api/anime/{slug}    - Anime Details
+   🎯 GET  /api/ongoing         - Ongoing Anime
+   ✅ GET  /api/completed       - Completed Anime
+   🔥 GET  /api/popular         - Popular Anime
+   📅 GET  /api/schedule        - Anime Schedule
+   🏷️ GET  /api/genres          - All Genres
+   🎬 GET  /api/streaming       - Streaming Links
+   🆕 GET  /api/recent          - Recent Episodes
+   🎥 GET  /api/movies          - Anime Movies
+   💫 GET  /api/recommendations - Recommendations
+   🏠 GET  /api/home            - Homepage Data
+   📊 GET  /api/stats           - API Statistics
+   ⚙️ GET  /api/admin/keys      - Manage API Keys
+
+⚠️ Remember to include 'x-api-key' header in all API requests!
   `);
 });
 
