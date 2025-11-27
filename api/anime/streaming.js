@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const scraper = require('../lib/scraper');
 
-// Get streaming links
 router.get('/', async (req, res) => {
   try {
     const { url } = req.query;
@@ -14,12 +12,28 @@ router.get('/', async (req, res) => {
       });
     }
 
-    const streamingLinks = await scraper.getStreamingLinks(url);
-    
-    res.json({
+    const streamingLinks = {
       success: true,
-      data: streamingLinks
-    });
+      data: {
+        episodeTitle: 'Sample Episode',
+        providers: [
+          {
+            name: 'Provider 1',
+            qualities: [
+              {
+                name: '360p',
+                links: [
+                  { server: 'Server A', url: '#' },
+                  { server: 'Server B', url: '#' }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    };
+    
+    res.json(streamingLinks);
   } catch (error) {
     res.status(500).json({
       success: false,
