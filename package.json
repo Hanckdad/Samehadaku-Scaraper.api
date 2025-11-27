@@ -1,6 +1,6 @@
 {
   "name": "samehadaku-scraper",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Complete Backend scraper for Samehadaku anime website",
   "main": "api/index.js",
   "scripts": {
@@ -22,7 +22,7 @@
     "api",
     "backend"
   ],
-  "author": "Bayu Anugraha",
+  "author": "Bayu Official",
   "license": "MIT",
   "engines": {
     "node": ">=18"
