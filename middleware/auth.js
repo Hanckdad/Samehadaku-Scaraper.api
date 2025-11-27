@@ -1,6 +1,18 @@
 const validApiKeys = new Set();
 
-// Generate API key (you can store this in environment variables)
+// Load API keys from environment variables in production
+if (process.env.NODE_ENV === 'production') {
+  const envApiKeys = process.env.API_KEYS;
+  if (envApiKeys) {
+    envApiKeys.split(',').forEach(key => {
+      if (key.trim()) {
+        validApiKeys.add(key.trim());
+      }
+    });
+    console.log(`Loaded ${validApiKeys.size} API keys from environment`);
+  }
+}
+
 function generateApiKey() {
   const { v4: uuidv4 } = require('uuid');
   const apiKey = uuidv4();
@@ -8,15 +20,41 @@ function generateApiKey() {
   return apiKey;
 }
 
+function addApiKey(apiKey) {
+  validApiKeys.add(apiKey);
+  return true;
+}
+
+function removeApiKey(apiKey) {
+  return validApiKeys.delete(apiKey);
+}
+
+function listApiKeys() {
+  return Array.from(validApiKeys);
+}
+
 function authenticateApiKey(req, res, next) {
+  // Skip auth for health check and key generation
+  if (req.path === '/' || req.path === '/generate-key') {
+    return next();
+  }
+  
   const apiKey = req.headers['x-api-key'];
   
   if (!apiKey) {
-    return res.status(401).json({ error: 'API key required' });
+    return res.status(401).json({ 
+      success: false,
+      error: 'API key required',
+      message: 'Include x-api-key header in your request'
+    });
   }
   
   if (!validApiKeys.has(apiKey)) {
-    return res.status(403).json({ error: 'Invalid API key' });
+    return res.status(403).json({ 
+      success: false,
+      error: 'Invalid API key',
+      message: 'The provided API key is not valid'
+    });
   }
   
   next();
@@ -24,6 +62,9 @@ function authenticateApiKey(req, res, next) {
 
 module.exports = {
   generateApiKey,
+  addApiKey,
+  removeApiKey,
+  listApiKeys,
   authenticateApiKey,
   validApiKeys
 };
