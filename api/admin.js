@@ -4,12 +4,8 @@ const {
   generateApiKey, 
   addApiKey, 
   removeApiKey, 
-  listApiKeys,
-  authenticateApiKey 
+  listApiKeys
 } = require('../middleware/auth');
-
-// Apply authentication to all admin routes
-router.use(authenticateApiKey);
 
 // Get all API keys
 router.get('/keys', (req, res) => {
