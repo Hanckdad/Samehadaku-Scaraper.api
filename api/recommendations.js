@@ -1,12 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const scraper = require('../lib/scraper');
-const db = require('../lib/database');
+const scraper = require('./scraper');
+const db = require('./database');
 
-// Get anime recommendations
 router.get('/', async (req, res) => {
   try {
-    const cacheKey = 'anime_recommendations';
+    const cacheKey = 'recommendations';
     const cached = db.get(cacheKey);
     
     if (cached) {
@@ -20,7 +19,7 @@ router.get('/', async (req, res) => {
       data: recommendations
     };
 
-    db.set(cacheKey, response, 3600000); // Cache 1 hour
+    db.set(cacheKey, response, 3600000);
     
     res.json(response);
   } catch (error) {
