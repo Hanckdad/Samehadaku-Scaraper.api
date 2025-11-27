@@ -39,7 +39,6 @@ function authenticateApiKey(req, res, next) {
     return next();
   }
   
-  // ✅ PERBAIKI: Untuk admin routes, kita tetap butuh auth
   const apiKey = req.headers['x-api-key'];
   
   if (!apiKey) {
