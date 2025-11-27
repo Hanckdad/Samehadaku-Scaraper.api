@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const scraper = require('../lib/scraper');
-const db = require('../lib/database');
 
-// Get ongoing anime
+// ✅ GUNAKAN PATH RELATIVE DI FOLDER YANG SAMA
+const scraper = require('./scraper');
+const db = require('./database');
+
 router.get('/', async (req, res) => {
   try {
     const { page = 1 } = req.query;
@@ -24,7 +25,7 @@ router.get('/', async (req, res) => {
       total: ongoing.length
     };
 
-    db.set(cacheKey, response, 300000); // Cache 5 minutes
+    db.set(cacheKey, response, 300000);
     
     res.json(response);
   } catch (error) {
