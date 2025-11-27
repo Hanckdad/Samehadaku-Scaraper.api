@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const scraper = require('../../lib/scraper');
+const scraper = require('../scraper');
+const db = require('../database');
 
-// Search anime
 router.get('/', async (req, res) => {
   try {
     const { q, page = 1 } = req.query;
@@ -14,14 +14,25 @@ router.get('/', async (req, res) => {
       });
     }
 
+    const cacheKey = `search_${q}_${page}`;
+    const cached = db.get(cacheKey);
+    
+    if (cached) {
+      return res.json(cached);
+    }
+
     const results = await scraper.searchAnime(q, page);
     
-    res.json({
+    const response = {
       success: true,
       query: q,
       page: parseInt(page),
       data: results
-    });
+    };
+
+    db.set(cacheKey, response, 300000);
+    
+    res.json(response);
   } catch (error) {
     res.status(500).json({
       success: false,
